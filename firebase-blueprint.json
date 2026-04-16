@@ -1,0 +1,53 @@
+{
+  "entities": {
+    "userProfile": {
+      "title": "User Profile",
+      "description": "Stores user preferences and global stats",
+      "type": "object",
+      "properties": {
+        "displayName": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "role": { "type": "string", "enum": ["client", "admin"] },
+        "totalBatches": { "type": "number" },
+        "totalHarvest": { "type": "number" },
+        "globalGrowth": { "type": "number" }
+      },
+      "required": ["displayName", "email", "role"]
+    },
+    "activeCrop": {
+      "title": "Active Crop",
+      "description": "A crop currently being grown",
+      "type": "object",
+      "properties": {
+        "seedId": { "type": "string" },
+        "name": { "type": "string" },
+        "phase": { "type": "string" },
+        "harvestTime": { "type": "number" },
+        "day": { "type": "number" },
+        "progress": { "type": "number" },
+        "image": { "type": "string" },
+        "lastWatered": { "type": "string", "format": "date-time" },
+        "stats": {
+          "type": "object",
+          "properties": {
+            "temp": { "type": "string" },
+            "watering": { "type": "string" }
+          }
+        },
+        "ownerId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["seedId", "name", "phase", "ownerId", "harvestTime"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "userProfile",
+      "description": "User private profile data"
+    },
+    "/crops/{cropId}": {
+      "schema": "activeCrop",
+      "description": "Active crops in the garden"
+    }
+  }
+}

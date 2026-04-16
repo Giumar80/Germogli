@@ -1,0 +1,95 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Document ID: {userId}
+    // Fields:
+    //   - displayName: string (required)
+    //   - email: string (required, email format)
+    //   - role: string (required, ['client', 'admin'])
+    //   - totalBatches: number (optional)
+    //   - totalHarvest: number (optional)
+    //   - globalGrowth: number (optional)
+    //
+    // Collection: crops
+    // Document ID: {cropId}
+    // Fields:
+    //   - name: string (required)
+    //   - phase: string (required)
+    //   - day: number (optional)
+    //   - progress: number (optional, 0-100)
+    //   - image: string (optional)
+    //   - stats: map (optional)
+    //   - ownerId: string (required, must match request.auth.uid)
+    //   - createdAt: timestamp (optional)
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isDocOwner() {
+      return isAuthenticated() && request.auth.uid == resource.data.ownerId;
+    }
+
+    function isValidEmail(email) {
+      return email is string && email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+    }
+
+    function hasOnlyAllowedFields(data, allowedFields) {
+      return data.keys().hasOnly(allowedFields);
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+
+    function isValidUser(data) {
+      return data.displayName is string && data.displayName.size() > 0 && data.displayName.size() < 100 &&
+             data.email is string && isValidEmail(data.email) &&
+             data.role in ['client', 'admin'];
+    }
+
+    function isValidCrop(data) {
+      return data.seedId is string &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
+             data.phase is string &&
+             data.harvestTime is number && data.harvestTime > 0 &&
+             data.ownerId == request.auth.uid &&
+             (!('progress' in data) || (data.progress is number && data.progress >= 0 && data.progress <= 100));
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /users/{userId} {
+      // Users can only read and write their own profile
+      allow read: if isOwner(userId);
+      allow create: if isOwner(userId) && isValidUser(request.resource.data) && request.resource.data.role == 'client';
+      allow update: if isOwner(userId) && isValidUser(request.resource.data) && request.resource.data.role == resource.data.role;
+    }
+
+    match /crops/{cropId} {
+      // Users can only access crops they own
+      allow read: if isAuthenticated() && (resource == null || resource.data.ownerId == request.auth.uid);
+      allow create: if isAuthenticated() && isValidCrop(request.resource.data);
+      allow update: if isDocOwner() && isValidCrop(request.resource.data);
+      allow delete: if isDocOwner();
+    }
+  }
+}
