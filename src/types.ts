@@ -1,4 +1,4 @@
-export type Screen = 'diario' | 'catalogo' | 'guida' | 'profilo' | 'crops';
+export type Screen = 'diario' | 'catalogo' | 'guida' | 'profilo' | 'crops' | 'agronomo';
 
 export interface Crop {
   id: string;

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Menu, User, Sprout, BookOpen, LayoutGrid, Settings, LogOut, RefreshCw, CheckCircle, Zap, X } from 'lucide-react';
+import { Menu, User, Sprout, BookOpen, LayoutGrid, Settings, LogOut, RefreshCw, CheckCircle, Zap, X, Microscope } from 'lucide-react';
 import { Screen } from '../types';
 import { auth } from '../lib/firebase';
 import { signOut } from 'firebase/auth';
@@ -36,11 +36,12 @@ export default function Layout({
     { id: 'diario' as Screen, label: 'Diario', icon: <LayoutGrid className="w-5 h-5" /> },
     { id: 'crops' as Screen, label: 'Lotti', icon: <Sprout className="w-5 h-5" /> },
     { id: 'catalogo' as Screen, label: 'Catalogo', icon: <BookOpen className="w-5 h-5" /> },
+    { id: 'agronomo' as Screen, label: 'Agronomo', icon: <Microscope className="w-5 h-5" /> },
     { id: 'profilo' as Screen, label: 'Profilo', icon: <User className="w-5 h-5" /> },
   ];
 
   return (
-    <div className="min-h-screen bg-surface flex flex-col md:flex-row font-body relative overflow-hidden">
+    <div className="min-h-screen bg-surface flex flex-col font-body relative overflow-hidden">
       {/* Global Loading Overlay */}
       {isLoading && (
         <div className="fixed inset-0 z-[100] bg-surface/60 backdrop-blur-sm flex flex-col items-center justify-center">
@@ -49,90 +50,92 @@ export default function Layout({
         </div>
       )}
 
-      {/* Desktop Sidebar */}
+      {/* Top Navigation Bar */}
       {!hideNav && (
-        <nav className="hidden md:flex fixed left-0 top-0 h-full w-72 bg-surface-container-lowest border-r border-outline flex-col py-10 z-50">
-          <div className="px-8 mb-12">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center shadow-lg shadow-primary/20">
-                <Sprout className="text-accent w-6 h-6" />
-              </div>
-              <h1 className="text-2xl font-black text-primary tracking-tighter uppercase">{title}</h1>
+        <nav className="fixed top-0 left-0 right-0 h-20 bg-surface-container-lowest/80 backdrop-blur-xl border-b border-outline z-50 flex items-center justify-between px-6 md:px-12">
+          {/* Logo & Brand */}
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center shadow-lg shadow-primary/20">
+              <Sprout className="text-accent w-6 h-6" />
             </div>
+            <h1 className="text-lg md:text-xl font-black text-primary tracking-tighter uppercase">{title}</h1>
           </div>
-          
-          <div className="flex-1 px-4 space-y-2">
+
+          {/* Minimalist Expanding Nav */}
+          <div className="hidden md:flex items-center bg-surface-container-low rounded-2xl p-1.5 gap-1.5">
             {navItems.map(item => (
-              <NavButton 
+              <motion.button 
                 key={item.id}
-                active={currentScreen === item.id} 
-                onClick={() => setScreen(item.id)} 
-                icon={item.icon} 
-                label={item.label} 
-              />
+                onClick={() => setScreen(item.id)}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                className={`flex items-center gap-0 overflow-hidden px-4 py-2.5 rounded-xl transition-all duration-300 group ${
+                  currentScreen === item.id 
+                    ? 'bg-primary text-on-primary shadow-lg shadow-primary/10' 
+                    : 'text-on-surface-variant hover:bg-surface-container-high'
+                }`}
+              >
+                <div className={`${currentScreen === item.id ? 'text-accent' : 'text-outline group-hover:text-primary'} transition-colors duration-300`}>
+                  {item.icon}
+                </div>
+                <motion.span 
+                  initial={false}
+                  animate={{ 
+                    width: currentScreen === item.id ? 'auto' : 0,
+                    marginLeft: currentScreen === item.id ? 12 : 0,
+                    opacity: currentScreen === item.id ? 1 : 0
+                  }}
+                  className="text-[10px] font-black uppercase tracking-[0.2em] whitespace-nowrap"
+                >
+                  {item.label}
+                </motion.span>
+              </motion.button>
             ))}
           </div>
 
-          <div className="px-6 mb-8 mt-8">
-            <TimerWidget />
-          </div>
+          {/* Actions & Avatar */}
+          <div className="flex items-center gap-4">
+            <div className="hidden lg:block">
+              <TimerWidget mini />
+            </div>
+            
+            <button 
+              onClick={() => setIsMobileMenuOpen(true)}
+              className="p-3 bg-surface-container-high rounded-xl hover:bg-primary/10 active:scale-90 transition-all text-primary"
+            >
+              <Settings className="w-5 h-5" />
+            </button>
 
-          <div className="px-4 mt-auto space-y-2 pt-10 border-t border-outline/30">
-            <NavButton 
-              active={false} 
-              onClick={handleLogout} 
-              icon={<LogOut className="w-5 h-5" />} 
-              label="Esci" 
-            />
+            <div className="h-10 w-10 md:h-12 md:w-12 rounded-xl bg-accent flex items-center justify-center shadow-md overflow-hidden border-2 border-white">
+              {auth.currentUser?.photoURL ? (
+                <img src={auth.currentUser.photoURL} alt="Avatar" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+              ) : (
+                <span className="font-black text-on-accent text-sm">{(userProfile?.displayName?.[0] || 'G').toUpperCase()}</span>
+              )}
+            </div>
           </div>
         </nav>
       )}
 
-      {/* Mobile Top Bar */}
-      {!hideNav && (
-        <div className="md:hidden fixed top-0 left-0 right-0 h-16 bg-surface-container-lowest/80 border-b border-outline flex items-center justify-between px-6 z-[60] backdrop-blur-xl">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-              <Sprout className="text-accent w-4 h-4" />
-            </div>
-            <span className="font-black text-primary tracking-tighter text-sm uppercase">{title}</span>
-          </div>
-          <div className="flex items-center gap-3">
-            <button 
-              onClick={onSave}
-              className="p-2 bg-primary text-on-primary rounded-xl shadow-lg shadow-primary/20 active:scale-90 transition-transform"
-            >
-              <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
-            </button>
-            <button 
-              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="p-2 bg-surface-container-high rounded-xl transition-colors active:scale-90"
-            >
-              <Settings className="w-5 h-5 text-primary" />
-            </button>
-          </div>
-        </div>
-      )}
-
       {/* Mobile Bottom Navigation */}
       {!hideNav && (
-        <div className="md:hidden fixed bottom-0 left-0 right-0 h-20 bg-surface-container-lowest/90 border-t border-outline flex items-center justify-around px-4 z-[60] backdrop-blur-2xl pb-safe">
+        <div className="md:hidden fixed bottom-0 left-0 right-0 h-20 bg-surface-container-lowest/90 border-t border-outline flex items-center justify-around px-2 z-[60] backdrop-blur-2xl pb-safe shadow-[0_-10px_40px_rgba(0,0,0,0.05)]">
           {navItems.map(item => (
             <button 
               key={item.id}
               onClick={() => setScreen(item.id)}
-              className="flex flex-col items-center gap-1.5 relative py-2 px-4"
+              className="flex flex-col items-center justify-center relative w-16 h-full group"
             >
-              <div className={`transition-all duration-300 ${currentScreen === item.id ? 'text-primary scale-110' : 'text-outline'}`}>
+              <div className={`transition-all duration-300 z-10 ${currentScreen === item.id ? 'text-primary scale-110 -translate-y-2' : 'text-outline group-hover:text-on-surface-variant'}`}>
                 {item.icon}
               </div>
-              <span className={`text-[8px] font-black uppercase tracking-widest transition-colors ${currentScreen === item.id ? 'text-primary' : 'text-outline'}`}>
+              <span className={`absolute bottom-3 text-[8px] font-black uppercase tracking-widest transition-all duration-300 ${currentScreen === item.id ? 'text-primary opacity-100 translate-y-0' : 'text-outline opacity-0 translate-y-2'}`}>
                 {item.label}
               </span>
               {currentScreen === item.id && (
                 <motion.div 
                   layoutId="mobile-nav-indicator"
-                  className="absolute -top-1 w-8 h-1 bg-accent rounded-full shadow-[0_0_10px_rgba(198,255,0,0.8)]"
+                  className="absolute top-0 w-10 h-1 bg-accent rounded-b-full shadow-[0_0_10px_rgba(198,255,0,0.8)]"
                 />
               )}
             </button>
@@ -140,7 +143,7 @@ export default function Layout({
         </div>
       )}
 
-      {/* Mobile Settings Overlay */}
+      {/* Settings Overlay */}
       <AnimatePresence>
         {isMobileMenuOpen && (
           <>
@@ -149,118 +152,99 @@ export default function Layout({
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setIsMobileMenuOpen(false)}
-              className="md:hidden fixed inset-0 z-[65] bg-primary/20 backdrop-blur-sm"
+              className="fixed inset-0 z-[65] bg-primary/20 backdrop-blur-sm"
             />
             <motion.div 
-              initial={{ opacity: 0, y: '100%' }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: '100%' }}
+              initial={{ opacity: 0, x: '100%' }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: '100%' }}
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="md:hidden fixed bottom-0 left-0 right-0 z-[70] bg-surface rounded-t-[3rem] p-8 pb-12 shadow-2xl"
+              className="fixed top-0 right-0 bottom-0 w-full max-w-sm z-[70] bg-surface p-8 shadow-2xl flex flex-col"
             >
-              <div className="w-12 h-1.5 bg-outline rounded-full mx-auto mb-8" />
-              <h3 className="text-xl font-black text-primary tracking-tighter uppercase mb-8 text-center">Impostazioni</h3>
+              <div className="flex items-center justify-between mb-12">
+                <h3 className="text-xl font-black text-primary tracking-tighter uppercase">Impostazioni</h3>
+                <button onClick={() => setIsMobileMenuOpen(false)} className="p-3 bg-surface-container-high rounded-xl">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
               
-              <div className="mb-8">
+              <div className="mb-12">
                 <TimerWidget />
+              </div>
+
+              <div className="space-y-4 px-4 bg-surface-container-low rounded-[2rem] p-8 mb-8">
+                <p className="text-[10px] font-black uppercase tracking-widest text-outline mb-4">Account</p>
+                <div className="flex items-center gap-4 mb-8">
+                  <div className="h-12 w-12 rounded-2xl bg-accent flex items-center justify-center font-black">
+                    {userProfile?.displayName?.[0] || 'U'}
+                  </div>
+                  <div>
+                    <p className="font-bold text-sm">{userProfile?.displayName}</p>
+                    <p className="text-[10px] text-outline">{auth.currentUser?.email}</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={onSave}
+                  className="w-full flex items-center justify-center gap-3 p-4 rounded-2xl bg-primary text-on-primary font-black uppercase tracking-widest text-[10px] active:scale-95 transition-transform"
+                >
+                  <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+                  Salva Stato
+                </button>
               </div>
 
               <button 
                 onClick={handleLogout}
-                className="w-full flex items-center justify-center gap-4 p-6 rounded-[2rem] bg-error/10 text-error font-black uppercase tracking-widest text-sm active:scale-95 transition-transform"
+                className="mt-auto w-full flex items-center justify-center gap-4 p-6 rounded-[2rem] bg-error/10 text-error font-black uppercase tracking-widest text-sm active:scale-95 transition-transform"
               >
                 <LogOut className="w-5 h-5" />
-                Esci dall'Ecosistema
+                Esci
               </button>
             </motion.div>
           </>
         )}
       </AnimatePresence>
 
-      <div className={`flex-1 flex flex-col ${!hideNav ? 'md:ml-72 pt-16 md:pt-0 pb-20 md:pb-0' : ''}`}>
-        {/* Header (Growth Bar) */}
+      <div className={`flex-1 flex flex-col ${!hideNav ? 'pt-20 pb-24 md:pb-0' : ''}`}>
+        {/* Sub-Header (Growth Bar) */}
         {!hideHeader && (
-          <header className="sticky top-16 md:top-0 w-full z-40 bg-surface/80 backdrop-blur-xl px-6 md:px-10 h-20 md:h-24 flex items-center justify-between border-b border-outline/50">
-            <div className="flex-1 max-w-sm">
-              <div className="flex justify-between items-center mb-2">
-                <div className="flex items-center gap-2">
-                  <Zap className="w-3 h-3 text-accent fill-accent" />
-                  <span className="text-[8px] md:text-[9px] font-black text-on-surface-variant uppercase tracking-[0.3em]">Crescita Globale</span>
+          <div className="w-full px-6 md:px-12 py-6 bg-surface">
+            <div className="max-w-7xl mx-auto flex items-center justify-between gap-8">
+              <div className="flex-1 max-w-md">
+                <div className="flex justify-between items-center mb-2">
+                  <div className="flex items-center gap-1.5 text-primary">
+                    <Zap className="w-3.5 h-3.5 fill-current" />
+                    <span className="text-[9px] font-black uppercase tracking-[0.2em]">Crescita Globale</span>
+                  </div>
+                  <span className="text-[10px] font-black text-primary">{userProfile?.globalGrowth || 0}%</span>
                 </div>
-                <span className="text-[9px] md:text-[10px] font-black text-primary">{userProfile?.globalGrowth || 0}%</span>
+                <div className="h-2 w-full bg-surface-container-high rounded-full overflow-hidden p-0.5 border border-outline/20">
+                  <motion.div 
+                    initial={{ width: 0 }}
+                    animate={{ width: `${userProfile?.globalGrowth || 0}%` }}
+                    transition={{ duration: 1.5, ease: "easeOut" }}
+                    className="h-full bg-gradient-to-r from-primary to-accent rounded-full shadow-[0_0_15px_rgba(198,255,0,0.3)]"
+                  />
+                </div>
               </div>
-              <div className="h-2 md:h-2.5 w-full bg-outline-variant rounded-full overflow-hidden p-0.5 border border-outline/20">
-                <motion.div 
-                  initial={{ width: 0 }}
-                  animate={{ width: `${userProfile?.globalGrowth || 0}%` }}
-                  transition={{ duration: 1.5, ease: "easeOut" }}
-                  className="h-full bg-gradient-to-r from-primary to-accent rounded-full shadow-[0_0_15px_rgba(198,255,0,0.3)]"
-                />
-              </div>
-            </div>
-            
-            <div className="flex items-center gap-4 md:gap-8 ml-4 md:ml-8">
-              <button 
-                onClick={onSave}
-                className="hidden sm:flex items-center gap-2.5 px-6 md:px-8 py-3 md:py-3.5 bg-primary text-on-primary rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-accent hover:text-on-accent transition-all shadow-xl shadow-primary/10 active:scale-95 group"
-              >
-                <RefreshCw className={`w-3.5 h-3.5 group-hover:rotate-180 transition-transform duration-500 ${isLoading ? 'animate-spin' : ''}`} />
-                Sincronizza
-              </button>
-              
-              <div className="flex items-center gap-3 md:gap-4">
-                <div className="text-right hidden sm:block">
-                  <p className="text-[9px] font-black text-on-surface-variant uppercase tracking-[0.2em] mb-0.5">Bentornato,</p>
-                  <p className="text-sm font-black text-primary tracking-tight">{userProfile?.displayName || 'Giardiniere'}</p>
-                </div>
-                <div className="h-10 w-10 md:h-12 md:w-12 rounded-xl md:rounded-2xl bg-accent flex items-center justify-center shadow-xl overflow-hidden border-2 border-white">
-                  {auth.currentUser?.photoURL ? (
-                    <img src={auth.currentUser.photoURL} alt="Avatar" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                  ) : (
-                    <span className="font-black text-on-accent text-sm md:text-base">{(userProfile?.displayName?.[0] || 'G').toUpperCase()}</span>
-                  )}
-                </div>
+              <div className="hidden md:block lg:hidden">
+                 <TimerWidget mini />
               </div>
             </div>
-          </header>
+          </div>
         )}
 
         {/* Main Content */}
-        <main className="p-4 md:p-10 max-w-7xl mx-auto w-full">
+        <main className="p-4 md:p-12 max-w-7xl mx-auto w-full">
           <motion.div
             key={currentScreen}
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+            transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
           >
             {children}
           </motion.div>
         </main>
       </div>
     </div>
-  );
-}
-
-function NavButton({ active, onClick, icon, label }: { active: boolean; onClick: () => void; icon: React.ReactNode; label: string; key?: string | number }) {
-  return (
-    <button 
-      onClick={onClick}
-      className={`w-full flex items-center gap-5 px-6 py-4 transition-all duration-500 rounded-2xl group ${
-        active 
-          ? 'bg-primary text-on-primary shadow-2xl shadow-primary/20' 
-          : 'text-on-surface-variant hover:bg-surface-container-high hover:text-primary'
-      }`}
-    >
-      <div className={`${active ? 'text-accent' : 'text-outline group-hover:text-primary'} transition-colors duration-300`}>
-        {icon}
-      </div>
-      <span className="text-[10px] font-black uppercase tracking-[0.2em]">{label}</span>
-      {active && (
-        <motion.div 
-          layoutId="nav-active-dot"
-          className="ml-auto w-1.5 h-1.5 rounded-full bg-accent shadow-[0_0_8px_rgba(198,255,0,0.8)]"
-        />
-      )}
-    </button>
   );
 }

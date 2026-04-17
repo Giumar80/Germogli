@@ -113,3 +113,23 @@
 .ease-spring {
   transition-timing-function: cubic-bezier(0.34, 1.56, 0.64, 1);
 }
+
+.markdown-body {
+  @apply text-on-surface leading-7;
+}
+
+.markdown-body p {
+  @apply mb-4 font-medium;
+}
+
+.markdown-body strong {
+  @apply font-black text-primary;
+}
+
+.markdown-body ul, .markdown-body ol {
+  @apply my-6 space-y-3;
+}
+
+.markdown-body li {
+  @apply flex items-start gap-2;
+}

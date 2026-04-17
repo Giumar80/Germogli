@@ -7,6 +7,7 @@ import Dashboard from './components/Dashboard';
 import Catalog from './components/Catalog';
 import ActiveCrops from './components/ActiveCrops';
 import InteractiveGuide from './components/InteractiveGuide';
+import AgronomistAI from './components/AgronomistAI';
 import { auth, db, handleFirestoreError, OperationType } from './lib/firebase';
 import { onAuthStateChanged, signInWithPopup, GoogleAuthProvider, User as FirebaseUser } from 'firebase/auth';
 import { doc, onSnapshot, setDoc, getDocFromServer, collection, query, where, updateDoc } from 'firebase/firestore';
@@ -14,18 +15,20 @@ import { calculateProgress } from './services/cropService';
 import { NotificationProvider, useNotification } from './context/NotificationContext';
 import { TimerProvider } from './context/TimerContext';
 
+import { storage } from './services/storageService';
+
 function AppContent() {
   const [currentScreen, setScreen] = useState<Screen>('diario');
   const [isLoading, setIsLoading] = useState(false);
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [isAuthReady, setIsAuthReady] = useState(false);
-  const [userProfile, setUserProfile] = useState<any>(null);
-  const [activeCrops, setActiveCrops] = useState<any[]>([]);
+  const [userProfile, setUserProfile] = useState<any>(storage.load('profile'));
+  const [activeCrops, setActiveCrops] = useState<any[]>(storage.load('crops') || []);
   const { showNotification } = useNotification();
 
   // Calculate global growth based on active crops progress
   const globalGrowth = useMemo(() => {
-    if (activeCrops.length === 0) return 0;
+    if (!activeCrops || activeCrops.length === 0) return 0;
     const totalProgress = activeCrops.reduce((sum, crop) => {
       const { progress } = calculateProgress(crop.createdAt, crop.harvestTime);
       return sum + progress;
@@ -37,14 +40,19 @@ function AppContent() {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
       setIsAuthReady(true);
+      if (!currentUser) {
+        storage.clear();
+      }
     });
     return () => unsubscribe();
   }, []);
 
   useEffect(() => {
     if (!user) {
-      setUserProfile(null);
-      setActiveCrops([]);
+      if (!storage.load('profile')) {
+        setUserProfile(null);
+        setActiveCrops([]);
+      }
       return;
     }
 
@@ -52,7 +60,9 @@ function AppContent() {
     const userDocRef = doc(db, 'users', user.uid);
     const unsubProfile = onSnapshot(userDocRef, (docSnap) => {
       if (docSnap.exists()) {
-        setUserProfile(docSnap.data());
+        const data = docSnap.data();
+        setUserProfile(data);
+        storage.save('profile', data);
       } else {
         const initialProfile = {
           displayName: user.displayName || 'Giardiniere',
@@ -68,8 +78,11 @@ function AppContent() {
         });
       }
     }, (err) => {
-      handleFirestoreError(err, OperationType.GET, `users/${user.uid}`);
-      showNotification('Errore nel caricamento del profilo', 'error');
+      if (!navigator.onLine) {
+        showNotification('Sei offline. Utilizzo dati locali.', 'info');
+      } else {
+        handleFirestoreError(err, OperationType.GET, `users/${user.uid}`);
+      }
     });
 
     // Fetch Active Crops
@@ -77,9 +90,13 @@ function AppContent() {
     const unsubCrops = onSnapshot(cropsQuery, (snapshot) => {
       const crops = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       setActiveCrops(crops);
+      storage.save('crops', crops);
     }, (err) => {
-      handleFirestoreError(err, OperationType.GET, 'crops');
-      showNotification('Errore nel caricamento dei lotti', 'error');
+      if (!navigator.onLine) {
+        // Already handled by profile unsub or just keep quiet if offline
+      } else {
+        handleFirestoreError(err, OperationType.GET, 'crops');
+      }
     });
 
     return () => {
@@ -175,6 +192,8 @@ function AppContent() {
         return <Catalog onSeeGuide={() => setScreen('guida')} user={user} />;
       case 'crops':
         return <ActiveCrops activeCrops={activeCrops} user={user} />;
+      case 'agronomo':
+        return <AgronomistAI />;
       case 'guida':
         return <InteractiveGuide onBack={() => setScreen('catalogo')} />;
       case 'profilo':

@@ -3,47 +3,72 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Clock, Play, Pause, RotateCcw, ChevronUp, ChevronDown } from 'lucide-react';
 import { useTimer } from '../context/TimerContext';
 
-export default function TimerWidget() {
+export default function TimerWidget({ mini = false }: { mini?: boolean }) {
   const { timeLeft, isActive, startTimer, pauseTimer, resetTimer, formatTime } = useTimer();
   const [isPicking, setIsPicking] = useState(false);
   const [pickedMinutes, setPickedMinutes] = useState(5);
+
+  const isOverdue = timeLeft < 0;
 
   const handleStart = () => {
     if (timeLeft === 0) {
       startTimer(pickedMinutes * 60);
     } else {
-      // Resume or start new? If it was paused, it resumes in context logic
-      // But my context startTimer resets it. Let's fix context later if needed.
-      // For now, if timeLeft > 0, we just toggle isActive in context.
-      // Actually, let's just use startTimer for new and toggle for pause.
       startTimer(timeLeft || pickedMinutes * 60);
     }
     setIsPicking(false);
   };
 
+  if (mini) {
+    return (
+      <div className="flex items-center gap-3 bg-surface-container-low px-4 py-2 rounded-2xl border border-outline/20">
+        <Clock className={`w-4 h-4 ${isActive ? 'text-accent animate-pulse' : 'text-outline'}`} />
+        <span className={`text-xs font-mono font-black ${isOverdue ? 'text-error animate-pulse' : 'text-on-surface'}`}>
+          {timeLeft !== 0 ? formatTime(timeLeft) : `${pickedMinutes}:00`}
+        </span>
+        <button 
+          onClick={isActive ? pauseTimer : handleStart}
+          className="p-1.5 hover:bg-surface-container-high rounded-lg text-primary"
+        >
+          {isActive ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5 fill-current" />}
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="relative">
       <motion.div 
         layout
-        className={`bento-card p-4 flex items-center gap-4 border-2 ${isActive ? 'border-accent shadow-[0_0_15px_rgba(198,255,0,0.2)]' : 'border-outline/30'} transition-all duration-500`}
+        className={`bento-card p-4 flex items-center gap-4 border-2 ${
+          isOverdue ? 'border-error shadow-[0_0_20px_rgba(255,82,82,0.2)]' : 
+          isActive ? 'border-accent shadow-[0_0_15px_rgba(198,255,0,0.2)]' : 
+          'border-outline/30'
+        } transition-all duration-500`}
       >
         <div 
           className="cursor-pointer flex items-center gap-3"
           onClick={() => !isActive && setIsPicking(!isPicking)}
         >
-          <div className={`w-10 h-10 rounded-full flex items-center justify-center ${isActive ? 'bg-accent text-on-accent animate-pulse' : 'bg-surface-container-high text-primary'}`}>
+          <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+            isOverdue ? 'bg-error text-on-error animate-bounce' :
+            isActive ? 'bg-accent text-on-accent animate-pulse' : 
+            'bg-surface-container-high text-primary'
+          }`}>
             <Clock className="w-5 h-5" />
           </div>
           <div>
-            <p className="text-[8px] font-black uppercase tracking-widest text-outline">Timer Promemoria</p>
-            <p className="text-lg font-mono font-black tracking-tighter">
-              {timeLeft > 0 ? formatTime(timeLeft) : `${pickedMinutes}:00`}
+            <p className="text-[8px] font-black uppercase tracking-widest text-outline">
+              {isOverdue ? 'Azione Scaduta!' : 'Timer Promemoria'}
+            </p>
+            <p className={`text-lg font-mono font-black tracking-tighter ${isOverdue ? 'text-error' : ''}`}>
+              {timeLeft !== 0 ? formatTime(timeLeft) : `${pickedMinutes}:00`}
             </p>
           </div>
         </div>
 
         <div className="flex items-center gap-2 ml-auto">
-          {timeLeft > 0 && (
+          {(timeLeft !== 0) && (
             <button 
               onClick={resetTimer}
               className="p-2 hover:bg-surface-container-highest rounded-full transition-colors text-outline hover:text-error"
@@ -54,7 +79,11 @@ export default function TimerWidget() {
           
           <button 
             onClick={isActive ? pauseTimer : handleStart}
-            className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all active:scale-90 ${isActive ? 'bg-surface-container-highest text-on-surface' : 'bg-primary text-on-primary shadow-lg shadow-primary/20'}`}
+            className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all active:scale-90 ${
+              isActive 
+                ? 'bg-surface-container-highest text-on-surface' 
+                : 'bg-primary text-on-primary shadow-lg shadow-primary/20'
+            }`}
           >
             {isActive ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 fill-current ml-0.5" />}
           </button>
